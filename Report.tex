@@ -32,7 +32,7 @@
   \begin{abstract}
  The activity of bots on social media platforms is increasingly becoming a problem and platform providers are seeking ways to prevent bots from infiltrating their systems.
 The following project evaluates two simple machine learning algorithms on their ability to discern between bots and users based on their usage data. 
-The algorithms applied are logistic regression, which was able to reach an accuracy of $97\%$, and XGBoost, \cite{chenXGBoostScalableTree2016} which reached $98\%$ accuracy.
+The algorithms applied are logistic regression, which was able to reach an accuracy of $97\%$, and XGBoost, which reached $98\%$ accuracy.
   \end{abstract}
   \vspace{3em}
 ]
@@ -88,11 +88,74 @@ Logistic regression is one of the simplest machine learning algorithms. Despite 
 
 \subsection{XGBoost}
 
-XGBoost (Extreme Gradient Boosting) is a high-performance implementation of gradient-boosted decision trees designed for speed and efficiency. \parencite{chenXGBoostScalableTree2016} It is particularly well-suited for structured datasets with a mix of categorical and numerical features, as in the current case.
+XGBoost (Extreme Gradient Boosting) is a high-performance implementation of gradient-boosted decision trees designed for speed and efficiency. \parencite{chenXGBoostScalableTree2016} As other decision tree derived algorithms, it is particularly well-suited for structured datasets with a mix of categorical and numerical features, as in the current case.
 
-One of XGBoost’s primary strengths lies in its ability to model complex, non-linear relationships between features and the target variable. Unlike logistic regression, which assumes linear separability, XGBoost can capture intricate interactions through its ensemble of decision trees. It also includes built-in regularization (both L1 and L2), which helps prevent overfitting—an important consideration when working with high-dimensional data.
+\subsection{Model Comparison}
 
-Another advantage is its native handling of missing values. Instead of requiring imputation, XGBoost can learn optimal default directions for missing data during tree construction, making it more robust to incomplete feature sets. Furthermore, it supports parallelized training and early stopping, allowing for efficient model tuning even on larger datasets.
+The most striking difference between logistic regression and XGBoost is their ability to handle non-linear data. While XGBoost can pick up on complex non-linear relationships, logistic regression doesn't have this ability. 
+Next to this difference, the two algorithms are similar in that they both are very compute efficient and use regularization to decrease overfitting, which is essential when working with high dimensional data.
+
+\section{Model Training}
+
+\subsection{Logistic Regression}
+
+A critical hyperparameter in logistic regression is \texttt{C}, which controls the strength of regularization. Lower \texttt{C} values impose stronger regularization, shrinking the model's coefficients toward zero (in the case of the default L2 penalty), and thereby reducing the risk of overfitting.
+
+A grid search was performed using \texttt{GridSearchCV} from \texttt{scikit-learn} to select the optimal regularization parameter \texttt{C}, testing the values 0.01, 0.1, 0.25, 0.5, 1, 2.5, 5, 10, 20, 40, and 80. \texttt{C} = 2.5 was identified as the best value and a model was trained on the whole training set.
+
+As visible in Figure~\ref{fig:c_value_performance} in the appendix, the average F1 score across five folds peaks around the value of 2.5, confirming the value arived at with gridsearch. Nevertheless, the error bars clearly indicate that the effect is extremely small. The difference between the worst and the best mean F1 score is only around 0.004\%, indicating, that regularization strength doesn't have a strong impact on performance in thi dataset.
+
+The final linear regressor was trained on the entire training set with a \texttt{C} value of 2.5.
+
+\subsection{XGBoost}
+
+With way more relevant hyperparameters than logistic regression, leading to a combinatorial explosion, gridsearch proved unsuitable and Optuna \parencite{akibaOptunaNextgenerationHyperparameter2019} was used instead. Optuna is an open-source hyperparameter optimizing framework that can efficiently search through t a large space of possible hyperparameter combinations. It uses advanced strategies like Bayesian optimization to intelligently explore the search space, thereby siginificantly reducing the number of tests that need to be done to arrive at a good result.
+
+To ensure reliabile results, every hyperparameter combination was scored on its average F1 score over 5 independently seeded 3-fold cross-validations. Optuna conducted a total of 100 trials with different combinations of hyperparameters. The best performing configuration achieved an average F1 score of 0.9781. Search ranges for hyperparameters and the resulting best combination can be found in Table~\ref{tab:xgb_best_params}.
+
+\begin{table}[H]
+\centering
+\caption{Best hyperparameter configuration for XGBoost and corresponding search ranges}
+\label{tab:xgb_best_params}
+\begin{tabular}{lll}
+\toprule
+\textbf{Hyperparameter} & \textbf{Best Value} & \textbf{Search Range} \\
+\midrule
+\texttt{n\_estimators}       & 281     & [50, 500] \\
+\texttt{learning\_rate}      & 0.2003  & [0.01, 0.3] \\
+\texttt{max\_depth}          & 3       & [3, 8] \\
+\texttt{min\_child\_weight}  & 1       & [1, 5] \\
+\texttt{subsample}          & 0.9284  & [0.6, 1.0] \\
+\texttt{colsample\_bytree}   & 0.6527  & [0.6, 1.0] \\
+\texttt{gamma}              & 1.0618  & [0, 5] \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Like previously with the logistic regressor, variance between the best and worst set of hyperparameters was only minimal, this time spanning a little more than 0.005\% in average F1 performance. Due to the fact that different hyperparameters are interacting, looking at them separately from each other becomes less meaningful and harder to interpret. Figure~\ref{fig:xgboost_hyper_compare} attemps this by visualizing how learning rate and gamma influence F1 score. It reveals, that a learning rate around 0.2 ressults in slightly higher F1 scores while higher gamma values tend to slightly decrease prediction performance.
+
+The final model used a the best parameters listed in Table~\ref{tab:xgb_best_params} collumn two and was re-trained on the entire training set.
+
+\section{Results}
+
+\subsection{Logistic regression}
+On the hold-out test set, the logistic regressor reached an F1 score of 0.9724, accuracy of 0.9728, precision of 0.9843, recall of 0.9608, and an area under curve (AUC) for the receiver operating characteristic (ROC) of 0.9951. Table~\ref{tab:log_confusion} displays the confunsion matrix of the predictions, revealing that only 23 out of 587 bots got misclassified as users. A ROC curve and a precision-recall curve can be found in figure~\ref{fig:log_ROC_curve} and figure~\ref{fig:log_precision_recall_curve} of the appendix respectively.
+
+\subsection{XGBoost}
+XGBoost was able to achieve an F1 score of 0.9768, accuracy of 0.9770, precision of 0.9861, recall of 0.9676, and ROC-AUC of 0.9962. Those metrics are reflected in it's confusion matrix (Table~\ref{tab:xgb_confusion}) that shows only 19 misclassified bots. Like previously with the logistic regression, the ROC curve (figure~\ref{fig:xgb_ROC_curve}) and a precision-recall curve (figure~\ref{fig:xgb_precision_recall_curve}) are very close to the optimum.
+
+\section{Discussion}
+
+\subsection{Model Performance Comparison}
+While XGBoost performs slightly better on all metrics, this difference is extremely small. With only 19 instead of 23 misclassified bots and only 8 instead of 9 misclassified users, XGBoosts accuracy is 0.0042 points higher than the one of logistic regression. This is also reflected in F1 score, where the difference increases slightly to 0.0044 points.
+Those differences are incredibly small and clearly show that XGBoosts ability to find non-linear relationships in data is not majorly critical for the given dataset.
+
+\subsection{Generalizability}
+
+Both models seem to generalize extremely well and don't show signs of overfitting to the training data. Comparing the F1 scores during hyperparameter tuning and testing shows only minimal differences of 0.0013 points in the F1 score of XGBoost. This difference is extremely small, especially when considering that hyperparameters were specifically chosen to fit the training set as well as possible.
+
+\subsection{Feature Analysis}
+
 
 
 \section{Conclusion}
@@ -111,40 +174,53 @@ Test
 \setcounter{table}{0}
 
 \begin{table}[H]
-    \centering
-    \caption{Sorted correlations between rings and other features}
-    \label{tab:correlations}
-    \begin{tabular}{lr}
-    \toprule
-     & Rings \\
-    \midrule
- Shell weight & 0.628 \\
- Height & 0.610 \\
- Diameter & 0.575 \\
- Length & 0.557 \\
- Whole weight & 0.541 \\
- Viscera weight & 0.504 \\
- Shucked weight & 0.421 \\
-    \bottomrule
-    \end{tabular}
+\centering
+\caption{Confusion matrix for logistic regression predictions on the test set}
+\label{tab:log_confusion}
+\begin{tabular}{lcc}
+\toprule
+ & \textbf{Predicted Users} & \textbf{Predicted Bots} \\
+\midrule
+\textbf{Users} & 579 & 9 \\
+\textbf{Bots} & 23  & 564 \\
+\bottomrule
+\end{tabular}
 \end{table}
-    
-
-\vfill
 
 \begin{table}[H]
-    \centering
-    \caption{Statistical comparisons of number of rings between genders}
-    \label{tab:gender_comparisons}
-    \begin{tabular}{llll}
-        \toprule
-        & M vs F & M vs I & F vs I \\
-        \midrule
- t-statistic & -3.681 & 27.188 & 29.465 \\
- p-value & \textless{}0.001 & \textless{}0.001 & \textless{}0.001 \\
- Cohen's d & -0.139 & 1.016 & 1.154 \\
-        \bottomrule
-    \end{tabular}
+\centering
+\caption{Confusion matrix for XGBoost predictions on the test set}
+\label{tab:xgb_confusion}
+\begin{tabular}{lcc}
+\toprule
+ & \textbf{Predicted Users} & \textbf{Predicted Bots} \\
+\midrule
+\textbf{Users} & 580 & 8 \\
+\textbf{Bots} & 19  & 568 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{10 most important features for XGBoost predictions based on their }
+\label{tab:xgb_feature_importance}
+\begin{tabular}{lr}
+\toprule
+ & 0 \\
+\midrule
+has\_photo\_0.0 & 741.480 \\
+has\_mobile\_Unknown & 366.661 \\
+has\_status\_Unknown & 354.188 \\
+all\_posts\_visible\_Unknown & 232.566 \\
+subscribers\_count & 37.060 \\
+avg\_likes & 33.168 \\
+city\_Saint Petersburg & 27.401 \\
+has\_website\_0.0 & 26.403 \\
+has\_occupation & 18.723 \\
+has\_status\_0.0 & 16.661 \\
+\bottomrule
+\end{tabular}
 \end{table}
 
 \vfill
@@ -154,6 +230,41 @@ Test
 \renewcommand{\thefigure}{A.\arabic{figure}}
 \setcounter{figure}{0}
 
-Test
+\begin{figure}[h]
+    \includegraphics[width=\linewidth]{Figures/Logistic_Regression_Performance_Across_C_Values.png}
+    \caption{Mean F1 score of logistic regression across different regularization strengths (C), evaluated using 5-fold stratified cross-validation. Error bars represent the standard deviation across folds. A log scale is used on the x-axis to capture the exponential range of tested C values. While a peak around 2.5 is visible, the error bars suggest that the effect of C is only minimal.}
+    \label{fig:c_value_performance}
+\end{figure}
+
+\begin{figure}[h]
+    \includegraphics[width=\linewidth]{Figures/Learning_Rate_vs_F1_Score__colored_by_Gamma_.png}
+    \caption{Scatterplot of the effect of the XGBoost hyperparameters \texttt{learning\_rate} and \texttt{gamma} on average F1 score.}
+    \label{fig:xgboost_hyper_compare}
+\end{figure}
+
+\begin{figure}[h]
+    \includegraphics[width=\linewidth]{Figures/Logistic_Regression___Precision_Recall_Curve.png}
+    \caption{Precision recall curve of the logistic regressor on the hold-out test set.}
+    \label{fig:log_precision_recall_curve}
+\end{figure}
+
+\begin{figure}[h]
+    \includegraphics[width=\linewidth]{Figures/Logistic_Regression___ROC_Curve.png}
+    \caption{Receiver operating characteristic curve of the logistic regressor on the hold-out test set.}
+    \label{fig:log_ROC_curve}
+\end{figure}
+
+\begin{figure}[h]
+    \includegraphics[width=\linewidth]{Figures/Logistic_Regression___Precision_Recall_Curve.png}
+    \caption{Precision recall curve of XGBoost on the hold-out test set.}
+    \label{fig:xgb_precision_recall_curve}
+\end{figure}
+
+\begin{figure}[h]
+    \includegraphics[width=\linewidth]{Figures/Logistic_Regression___ROC_Curve.png}
+    \caption{Receiver operating characteristic curve of XGBoost on the hold-out test set.}
+    \label{fig:xgb_ROC_curve}
+\end{figure}
+
 
 \end{document}
