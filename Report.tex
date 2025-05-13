@@ -28,6 +28,11 @@
 
 \twocolumn[
   \maketitle
+  \begin{abstract}
+   The activity of bots on social media platforms is increasingly becoming a problem and platform providers are seeking ways to prevent bots from infiltrating their systems.
+  The following project evaluates two simple machine learning algorithms on their ability to discern between bots and users based on their usage data. 
+  The algorithms applied are logistic regression (LR), which was able to reach an accuracy of $97.28\%$, and XGBoost (XGB), which reached $97.70\%$ accuracy.
+  \end{abstract}
 ]
 
 \section{Data and Preprocessing}
@@ -36,26 +41,26 @@
 \subsection{Dataset Description}
 
 The 
-"bots\_vs\_users.csv" dataset contains information on $5874$ social media accounts, exactly half of which are bots. Every account has $59$ features, which include $14$ numerical ones like their \texttt{average\_views} and $45$ categorical ones like the city they live in. $41$ of the categorical features are binary, like the variable \texttt{has\_profile\_picture}, for example.
+"bots\_vs\_users.csv" dataset contains information on $5874$ social media accounts, exactly half of which are bots. Every account has $59$ features, which include $14$ numerical ones like their \texttt{average\_views} and $45$ categorical ones like the city they live in. $41$ of the categorical features are binary, like the variable \texttt{has\_profile\_picture}.
 Most of the features include a large number of missing or unknown values. 4483 accounts don't contain any numerical information, while for the individual categorical features, between 5006 and 24 of the accounts carry the label "unknown".
-Only the target variable "target", which indicates if the account is a bot or not, has no missing features.
+Only the target variable "target", which indicates if the account is a bot or not, has no missing values.
 
 \subsection{Data split}
 
-Before any preprocessing was applied, the data was split into a training and a test set using a stratified 80/20 split. This was done prior to preprocessing because some of the preprocessing steps learn from the data and thus would lead to data leakage if applied to the entire dataset at once. Model hyperparameters were validated based on a k-fold cross-validation on the training set. To ensure reproducibility, this and every following step that involves randomness was seeded with the seed $42$.
+Before any preprocessing was applied, the data was split into a training and a test set using a stratified 80/20 split. Model hyperparameters were validated based on a k-fold cross-validation on the training set. To ensure reproducibility, this and every following step that involves randomness was seeded with the seed $42$.
 
 \subsection{Preprocessing and Feature Engineering}
 
-The following section lists all the transformations in the order they were applied. All transformations that require learning distributional features from data were fit only on the training data to prevent data leakage.
+The following section lists all transformations in the order they were applied. Each transformation that requires learning distributional features was fit only on the training set to prevent data leakage.
 
-\begin{enumerate}[itemsep=4pt, parsep=0pt]
+\begin{enumerate}[itemsep=1pt, parsep=0pt]
     \item \textbf{Minimal profile flag}: A binary categorical feature was added, distinguishing between accounts with and without initial numeric feature values. 
 
     \item \textbf{Subscribers count feature}: The subscribers count feature was transformed from a categorical feature with $1597$ categories into a numeric feature.
 
-    \item \textbf{Data scaling}: To ensure equal contribution of features and faster convergence for logistic regression (LR), the data was scaled and skew was removed using the Yeo-Johnson method of \texttt{sklearn}'s \texttt{PowerTransform} class. \parencite{yeoNewFamilyPower2000}
+    \item \textbf{Data scaling}: To ensure equal contribution of features and faster convergence for LR, the data was scaled and skew was removed using the Yeo-Johnson method of \texttt{sklearn}'s \texttt{PowerTransform} class. \parencite{yeoNewFamilyPower2000}
 
-    \item \textbf{Median imputation}: To enable algorithms that can't handle \texttt{NaN} values, the \texttt{SimpleImputer} class of the \texttt{sklearn} library was used to replace all missing values for numerical features with the median of their feature.
+    \item \textbf{Median imputation}: To remove \texttt{NaN} values, the \texttt{SimpleImputer} class of the \texttt{sklearn} library was used to replace all missing values for numerical features with the median of their feature.
 
     \item \textbf{Categorical encoding}: Categorical features with exactly two categories were binary encoded, mapping each category to 0 or 1. The remaining categories were one-hot encoded, while assigning all categories with fewer than 30 members to a "\texttt{other}" bin. This reduced the number of city categories from 362 to only 6, preventing a drastic dimensionality increase of the data. For all categorical features, the \texttt{unknown} category was treated just as any other category.
 \end{enumerate}
@@ -64,38 +69,36 @@ The following section lists all the transformations in the order they were appli
 
 \subsection{Baseline}
 
-For a baseline measurement, \texttt{sklearn}'s \texttt{DummyClassifier} was used with the "stratified" stragety. This strategy randomly predicts labels based on the frequency with which they occur in the dataset. It achieved an accuracy of 0.5 and an F1-score of 0.49 on the bot class.
+For a baseline measurement, \texttt{sklearn}'s \texttt{DummyClassifier} was used with the "stratified" strategy. This strategy randomly predicts labels based on the frequency at which they occur in the dataset. It achieved an accuracy of 0.5 and an F1-score of 0.49 on the bot class.
 
 \subsection{Logistic Regressor}
 
-Logistic regression is one of the simplest machine learning algorithms. Despite its simplicity, it performs surprisingly well on linearly separable classification tasks. A major advantage of logistic regression is that its coefficients directly reflect feature importance for the classification task and can thus easily be interpreted. Additionally, it is very computationally efficient when dealing with large feature spaces. This makes it a good choice for local hyperparameter tuning and evaluation on the current dataset.
+LR is one of the simplest machine learning algorithms. Despite its simplicity, it performs surprisingly well on linearly separable classification tasks. A major advantage of LR is that its coefficients directly reflect feature importance for the classification task and can thus easily be interpreted. Additionally, it is very computationally efficient when dealing with large feature spaces. This makes it a good choice for local hyperparameter tuning and evaluation on the current dataset.
 
 \subsection{XGBoost}
 
-XGBoost (Extreme Gradient Boosting) is a high-performance implementation of gradient-boosted decision trees designed for speed and efficiency. \parencite{chenXGBoostScalableTree2016} As other decision tree derived algorithms, it is particularly well-suited for structured datasets with a mix of categorical and numerical features, as in the current case.
+Extreme Gradient Boosting, known as XGBoost (XGB), is a high-performance implementation of gradient-boosted decision trees, designed for speed and efficiency. \parencite{chenXGBoostScalableTree2016} As other decision tree-derived algorithms, it is particularly well-suited for structured datasets with a mix of categorical and numerical features, as in the current case.
 
 \subsection{Model Comparison}
 
-The most striking difference between logistic regression and XGBoost is their ability to handle non-linear data. While XGBoost can pick up on complex non-linear relationships, logistic regression doesn't have this ability. 
-Next to this difference, the two algorithms are similar in that they both are very compute efficient and use regularization to decrease overfitting, which is essential when working with high dimensional data.
+The most striking difference between LR and XGB is their ability to handle nonlinear data. While XGB can pick up on complex nonlinear relationships, LR doesn't have this ability. 
+Next to this difference, the two algorithms are similar in that they both are very computationally efficient and use regularization to decrease overfitting, which is essential when working with high-dimensional data.
 
 \section{Model Training}
 
 \subsection{Logistic Regression}
 
-A critical hyperparameter in logistic regression is \texttt{C}, which controls the strength of regularization. Lower \texttt{C} values impose stronger regularization, shrinking the model's coefficients toward zero (in the case of the default L2 penalty), and thereby reducing the risk of overfitting.
+A critical hyperparameter in LR is \texttt{C}, which controls the strength of regularization. Lower \texttt{C} values impose stronger regularization, shrinking the model's coefficients toward zero (in the case of the default L2 penalty), and thereby reducing the risk of overfitting.
 
-A grid search was performed using \texttt{GridSearchCV} from \texttt{scikit-learn} to select the optimal regularization parameter \texttt{C}, testing the values 0.01, 0.1, 0.25, 0.5, 1, 2.5, 5, 10, 20, 40, and 80. \texttt{C} = 2.5 was identified as the best value and a model was trained on the whole training set.
+A grid search was performed using \texttt{GridSearchCV} from \texttt{scikit-learn} to select the optimal regularization parameter \texttt{C}, testing the values 0.01, 0.1, 0.25, 0.5, 1, 2.5, 5, 10, 20, 40, and 80. \texttt{C} = 2.5 was identified as the best value, and the final LR model was trained with this hyperparameter on the whole training set.
 
-As visible in Figure~\ref{fig:c_value_performance} in the appendix, the average F1 score across five folds peaks around the value of 2.5, confirming the value arived at with gridsearch. Nevertheless, the error bars clearly indicate that the effect is extremely small. The difference between the worst and the best mean F1 score is only around 0.004\%, indicating, that regularization strength doesn't have a strong impact on performance in thi dataset.
-
-The final linear regressor was trained on the entire training set with a \texttt{C} value of 2.5.
+As visible in Figure~\ref{fig:c_value_performance} in the appendix, the average F1 score across five folds peaks around the value of 2.5, confirming the value arrived at with gridsearch. Nevertheless, the error bars indicate that the effect is extremely small. The difference between the worst and the best mean F1 score is only around 0.004 points, indicating that regularization strength doesn't have a strong impact on performance in this dataset.
 
 \subsection{XGBoost}
 
-With way more relevant hyperparameters than logistic regression, leading to a combinatorial explosion, gridsearch proved unsuitable and Optuna \parencite{akibaOptunaNextgenerationHyperparameter2019} was used instead. Optuna is an open-source hyperparameter optimizing framework that can efficiently search through t a large space of possible hyperparameter combinations. It uses advanced strategies like Bayesian optimization to intelligently explore the search space, thereby siginificantly reducing the number of tests that need to be done to arrive at a good result.
+Gridsearch proved unsuitable for optimizing the hyperparameters of XGB because the number of possible combinations is to large for local computation. The open-source hyperparameter optimizing framework Optuna \parencite{akibaOptunaNextgenerationHyperparameter2019} was used instead as it automates the efficient search through a large space of possible hyperparameter combinations. Optuna uses advanced strategies like Bayesian optimization to intelligently explore the search space, thereby significantly reducing the number of tests that need to be done to arrive at a good result.
 
-To ensure reliabile results, every hyperparameter combination was scored on its average F1 score over 5 independently seeded 3-fold cross-validations. Optuna conducted a total of 100 trials with different combinations of hyperparameters. The best performing configuration achieved an average F1 score of 0.9781. Search ranges for hyperparameters and the resulting best combination can be found in Table~\ref{tab:xgb_best_params}.
+To ensure reliable results, every hyperparameter combination was scored on its average F1 score over 5 independently seeded 3-fold cross-validations. Optuna conducted a total of 100 trials with different combinations of hyperparameters. The best performing configuration achieved an average F1 score of 0.9781. Search ranges for hyperparameters and the resulting best combination can be found in Table~\ref{tab:xgb_best_params}.
 
 \begin{table}[H]
 \centering
@@ -116,36 +119,38 @@ To ensure reliabile results, every hyperparameter combination was scored on its 
 \end{tabular}
 \end{table}
 
-Like previously with the logistic regressor, variance between the best and worst set of hyperparameters was only minimal, this time spanning a little more than 0.005\% in average F1 performance. Due to the fact that different hyperparameters are interacting, looking at them separately from each other becomes less meaningful and harder to interpret. Figure~\ref{fig:xgboost_hyper_compare} attemps this by visualizing how learning rate and gamma influence F1 score. It reveals, that a learning rate around 0.2 ressults in slightly higher F1 scores while higher gamma values tend to slightly decrease prediction performance.
+Like previously with the logistic regressor, variance between the best and worst set of hyperparameters was only minimal, this time spanning a little more than 0.005\% in average F1 performance. Due to the fact that different hyperparameters are interacting, their individual values becomes less meaningful. Figure~\ref{fig:xgboost_hyper_compare} attempts to visualize their interaction by plotting how learning rate and gamma influence the F1 score. It reveals that a learning rate around 0.2 results in slightly higher F1 scores, while higher gamma values tend to slightly decrease prediction performance.
 
-The final model used a the best parameters listed in Table~\ref{tab:xgb_best_params} collumn two and was re-trained on the entire training set.
+The final model used the best parameters listed in Table~\ref{tab:xgb_best_params} and was re-trained on the entire training set.
 
 \section{Results}
 
 \subsection{Logistic regression}
-On the hold-out test set, the logistic regressor reached an F1 score of 0.9724, accuracy of 0.9728, precision of 0.9843, recall of 0.9608, and an area under curve (AUC) for the receiver operating characteristic (ROC) of 0.9951. Table~\ref{tab:log_confusion} displays the confunsion matrix of the predictions, revealing that only 23 out of 587 bots got misclassified as users. A ROC curve and a precision-recall curve can be found in figure~\ref{fig:log_ROC_curve} and figure~\ref{fig:log_precision_recall_curve} of the appendix respectively.
+On the hold-out test set, LR reached an F1 score of 0.9724, accuracy of 0.9728, precision of 0.9843, recall of 0.9608, and an area under the curve (AUC) for the receiver operating characteristic (ROC) of 0.9951. Table~\ref{tab:log_confusion} displays the confusion matrix of the predictions, revealing that only 23 out of 587 bots got misclassified as users. A ROC curve and a precision-recall curve can be found in figure~\ref{fig:log_ROC_curve} and figure~\ref{fig:log_precision_recall_curve} of the appendix, respectively.
 
 \subsection{XGBoost}
-XGBoost was able to achieve an F1 score of 0.9768, accuracy of 0.9770, precision of 0.9861, recall of 0.9676, and ROC-AUC of 0.9962. Those metrics are reflected in it's confusion matrix (Table~\ref{tab:xgb_confusion}) that shows only 19 misclassified bots. Like previously with the logistic regression, the ROC curve (figure~\ref{fig:xgb_ROC_curve}) and a precision-recall curve (figure~\ref{fig:xgb_precision_recall_curve}) are very close to the optimum.
+XGB achieved an F1 score of 0.9768, accuracy of 0.9770, precision of 0.9861, recall of 0.9676, and ROC-AUC of 0.9962. Those metrics are reflected in its confusion matrix (Table~\ref{tab:xgb_confusion}) that shows only 19 misclassified bots. Like previously with LR, the ROC curve (Figure~\ref{fig:xgb_ROC_curve}) and a precision-recall curve (Figure~\ref{fig:xgb_precision_recall_curve}) are very close to the optimum.
 
 \section{Discussion}
 
 \subsection{Model Performance Comparison}
-While XGBoost performs slightly better on all metrics, this difference is extremely small. With only 19 instead of 23 misclassified bots and only 8 instead of 9 misclassified users, XGBoosts accuracy is 0.0042 points higher than the one of logistic regression. This is also reflected in F1 score, where the difference increases slightly to 0.0044 points.
-Those differences are incredibly small and clearly show that XGBoosts ability to find non-linear relationships in data is not majorly critical for the given dataset.
+While XGB performs slightly better on all metrics, this difference is small. With only 19 instead of 23 misclassified bots and only 8 instead of 9 misclassified users, XGB's accuracy is 0.0042 points higher than that of LR. This is also reflected in the F1 score, where the difference increases slightly to 0.0044 points.
+Those differences are incredibly small and clearly show that XGB's ability to find nonlinear relationships in data is not majorly critical for the given dataset.
 
 \subsection{Generalizability}
 
-Both models seem to generalize extremely well and don't show signs of overfitting to the training data. Comparing the F1 scores during hyperparameter tuning and testing shows only minimal differences of 0.0013 points in the F1 score of XGBoost. This difference is extremely small, especially when considering that hyperparameters were specifically chosen to fit the training set as well as possible.
+Both models seem to generalize extremely well and don't show signs of overfitting. Comparing the F1 scores during hyperparameter tuning and testing shows only minimal differences of 0.0013 points in the F1 score of XGB and 0.0022 for LR. These differences are extremely small, especially when considering that hyperparameters were specifically chosen to fit the training set as well as possible.
 
 \subsection{Feature Analysis}
 
-The \texttt{Explainer} class of the python \texttt{shap} library was used to extract SHAP values for the different features. Figures~\ref{fig:log_shap_bar}, \ref{fig:log_shap_bee}, \ref{fig:xgb_shap_bar}, and \ref{fig:xgb_shap_bee} visualize those, showing a high amount of overlap with the six most important features of the logistic regressor all being in the top eigt most important features. Notably, the one hot encoding of the unknown class in the \texttt{has\_status} feature is the most important feature for both algorithms. 
-Specifically looking at the gender variable reveals for both algorithms, the error rate decreases with increasing frequency of the category, (Table~\ref{tab:gender_analysis}) resulting in the positive class having the lowest error rate.
+The \texttt{Explainer} class of the Python \texttt{shap} library was used to extract SHAP values for the different features. Figures~\ref{fig:log_shap_bar}, \ref{fig:log_shap_bee}, \ref{fig:xgb_shap_bar}, and \ref{fig:xgb_shap_bee} visualize those, showing a large overlap with the six most important features of LR all being in the top eight most important features of XGB. Most notably, the one-hot encoding of the unknown class in the \texttt{has\_status} feature is the most important feature for both algorithms. 
+Looking at the gender variable reveals that the error rate decreases with increasing frequency per bin in both algorithms. (Table~\ref{tab:gender_analysis}) The positive class has the most examples and the lowest error rate, while the unknown class has the fewest examples and the highest error rate, which is caused by only one mistake.
 
 \section{Reflection}
 
-Through consistent seeding, the results of this report can easily reproduced. With different seeds, it is not unlikey to arrive at a different combination of hyperparameters because of the small error differences between tests. As shown in Figure~\ref{fig:c_value_performance}, the variability from different splits far exceeded the variability from different \texttt{C} values. Therefore, it's possible that different seeds for splitting the dataset lead to different best \texttt{C}s just by chance. While extensive testing with systematically different split seeds was implemented, which definitely decreased variability in results, XGB different seeds will most likely still result in different sets of hyperparameters.
+Through consistent seeding, the results of this report can easily be reproduced. A potential improvement would be to check different penalties and solvers for LR as further hyperparameters. Due to the large amount of effort that went into optimizing XGB hyperparameters, this was omitted, and default parameters, which tend to be optimal in most cases, were used.
+
+A possible problem for reproducibility is that different seeds are likely to result in different combinations of hyperparameters. This happens because the variance created by hyperparameter choice is far lower than the variance created by different splits of the data (see Figure~\ref{fig:c_value_performance}). This fact decreases the reliability of the "best hyperparameters" arrived at in this report. During tuning of XGB hyperparameters, variability was decreased by systematically varying seeds and testing each hyperparameter combination on five different splits. This approach decreased the amount of noise in the results, but can not fully eliminate it. Testing for longer and including even more different splits per combination would improve reliability further. Fortunately, the differences in performance are minimal for most hyperparameter combinations, ensuring that the current result will not be far from the optimal one.
 
 \printbibliography
 
@@ -252,7 +257,7 @@ other & 1 & 1 & 9 & 0.111 & 0.111 \\
 
 \begin{figure}[h]
     \includegraphics[width=\linewidth]{Figures/shap_bars.png}
-    \caption{Bar graph, comparing SHAP feature importance of the 9 most important features in the linear regessor with the summed importance of the 129 remaining features.}
+    \caption{Bar graph, comparing SHAP feature importance of the 9 most important features in the logistic regressor with the summed importance of the 129 remaining features.}
     \label{fig:log_shap_bar}
 \end{figure}
 
