@@ -9,7 +9,6 @@
 \usepackage{geometry}
 \usepackage{booktabs}
 \usepackage{float}
-\usepackage{enumitem}
 \usepackage[backend=biber, style=apa]{biblatex}
 \DeclareLanguageMapping{english}{english-apa}
 \addbibresource{~/Documents/Zotero/references.bib}
@@ -26,9 +25,23 @@
 
 \begin{document}
 
+
 \twocolumn[
   \maketitle
+
+  \begin{abstract}
+ The activity of bots on social media platforms is increasingly becoming a problem and platform providers are seeking ways to prevent bots from infiltrating their systems.
+The following project evaluates two simple machine learning algorithms on their ability to discern between bots and users based on their usage data. 
+The algorithms applied are logistic regression, which was able to reach an accuracy of $97\%$, and XGBoost, which reached $98\%$ accuracy.
+  \end{abstract}
+  \vspace{3em}
 ]
+
+\section{Introduction}
+
+With the rise of large language models, bots now have the ability to immitate human behavior better than ever before. This makes descerning them from actual users increasingly hard, and more sophisticated methods are needed to detect them.
+
+% Describe models
 
 \section{Data and Preprocessing}
 % Describe the dataset, relevant features, and how you prepared/split the data.
@@ -36,29 +49,32 @@
 \subsection{Dataset Description}
 
 The 
-"bots\_vs\_users.csv" dataset contains information on $5874$ social media accounts, exactly half of which are bots. Every account has $59$ features, which include $14$ numerical ones like their \texttt{average\_views} and $45$ categorical ones like the city they live in. $41$ of the categorical features are binary, like the variable \texttt{has\_profile\_picture}, for example.
-Most of the features include a large number of missing or unknown values. 4483 accounts don't contain any numerical information, while for the individual categorical features, between 5006 and 24 of the accounts carry the label "unknown".
-Only the target variable "target", which indicates if the account is a bot or not, has no missing features.
+"bots\_vs\_users.csv" dataset contains information on $5874$ social media accounts, exactly half of which are bots. Every account has $59$ features, that include $14$ numerical ones like their \texttt{average\_views} and $45$ categorical ones like the city they live in. $41$ of the categorical features are binary like the the variable \texttt{has\_profile\_picture} for example.
+Most of the features include a large number of missing or unknown values. 4483 accounts don't contain any numerical information, while for the individual categorical features, between 5006 and 24 of the accounts cary the label "unknown".
+Only the target varialbe "target", which indicates if the account is a bot or not has no missing features.
 
 \subsection{Data split}
 
-Before any preprocessing was applied, the data was split into a training and a test set using a stratified 80/20 split. This was done prior to preprocessing because some of the preprocessing steps learn from the data and thus would lead to data leakage if applied to the entire dataset at once. Model hyperparameters were validated based on a k-fold cross-validation on the training set. To ensure reproducibility, this and every following step that involves randomness was seeded with the seed $42$.
+Before any preprocessing was applied, the data was split into a training and a test set using a stratified 80/20 split. This was done prior to preprocessing due to the reason that some of the preprocessing steps learn from the data and thus would lead to data leakage if applied to the entire dataset at once. Model hyperparameters were validated based on a k-fold cross validation on the training set. To ensure reproducibility, this and every following step that involves randomness was seeded with the seed $42$.
 
 \subsection{Preprocessing and Feature Engineering}
 
-The following section lists all the transformations in the order they were applied. All transformations that require learning distributional features from data were fit only on the training data to prevent data leakage.
+All the preprocessing and feature engineering steps were implemented in a single \texttt{DataCleaner} class. The class's \texttt{fit\_transform} method was used on the training data and transforms it while learning distributional features from it for functions like scaling. The \texttt{transform} method applies the same transformations with the previously learned features and was used on the testing dataset. This sections lists all the transformations in the order they were applied.
 
-\begin{enumerate}[itemsep=4pt, parsep=0pt]
-    \item \textbf{Minimal profile flag}: A binary categorical feature was added, distinguishing between accounts with and without initial numeric feature values. 
+\paragraph{Minimal profile flag}
+A binary categorical feature was added, descerning between the accounts that have numeric features and the accounts without them. This step was done first because later steps add further numeric variables, which have missing values for different users, but the intended variable was intended to capture exactly the set of users that don't have numeric features in the initial dataset.
 
-    \item \textbf{Subscribers count feature}: The subscribers count feature was transformed from a categorical feature with $1597$ categories into a numeric feature.
+\paragraph{Subscribers Count Feature}
+While reflecting a numeric quantity, the \texttt{subscribers\_count} feature was stored as a categorical variable with $1597$ possible categories. To enable the machine learning algorithms, to learn from the numeric relationships, this variable was converted to be numeric.
 
-    \item \textbf{Data scaling}: To ensure equal contribution of features and faster convergence for logistic regression (LR), the data was scaled and skew was removed using the Yeo-Johnson method of \texttt{sklearn}'s \texttt{PowerTransform} class. \parencite{yeoNewFamilyPower2000}
+\paragraph{Data Scaling}
+To ensure equal contribution of features and faster convergence for the logistic regressor, the data was scaled with the \texttt{StandarScaler} of the \texttt{sklearn} python library.
 
-    \item \textbf{Median imputation}: To enable algorithms that can't handle \texttt{NaN} values, the \texttt{SimpleImputer} class of the \texttt{sklearn} library was used to replace all missing values for numerical features with the median of their feature.
+\paragraph{Median imputation}
+The \texttt{SimpleImputer} class of the \texttt{sklearn} library was used to replace all missing values for numerical features with the median of this feature. That way, it is possible for the logistic regressor to use the numeric features without creating unnecessary noise. 
 
-    \item \textbf{Categorical encoding}: Categorical features with exactly two categories were binary encoded, mapping each category to 0 or 1. The remaining categories were one-hot encoded, while assigning all categories with fewer than 30 members to a "\texttt{other}" bin. This reduced the number of city categories from 362 to only 6, preventing a drastic dimensionality increase of the data. For all categorical features, the \texttt{unknown} category was treated just as any other category.
-\end{enumerate}
+\paragraph{Categorical encoding}
+Categorical features with exactly two categories were binary encoded, mapping each category to 0 or 1. The remaining categories were one-hot encoded, while assigning all categories with less than 30 members into an \texttt{other} bin. This \texttt{other} bin had the effect of reducing the number of city categories from 362 to only 6 and thereby preventing a drastic dimensionality increase that would have otherwise come from one-hot encoding it. For all categorical features, the \texttt{unknown} category was treated just as any other category.
 
 \section{Models}
 
@@ -171,9 +187,6 @@ Through consistent seeding, the results of this report can easily reproduced. Wi
 \end{tabular}
 \end{table}
 
-\vfill
-
-
 \begin{table}[H]
 \centering
 \caption{Confusion matrix for XGBoost predictions on the test set}
@@ -187,9 +200,6 @@ Through consistent seeding, the results of this report can easily reproduced. Wi
 \bottomrule
 \end{tabular}
 \end{table}
-
-\vfill
-
 
 \begin{table}[H]
 \centering
